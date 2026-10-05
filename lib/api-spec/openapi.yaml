@@ -3,20 +3,24 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Fixora local services marketplace API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
-    description: Health operations
+  - name: auth
+  - name: marketplace
+  - name: bookings
+  - name: notifications
+  - name: professional
+  - name: admin
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,13 +28,691 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /auth/signup:
+    post:
+      operationId: signup
+      tags: [auth]
+      summary: Create a customer or professional account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SignupInput"
+      responses:
+        "201":
+          description: Account created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "400":
+          $ref: "#/components/responses/Error"
+  /auth/login:
+    post:
+      operationId: login
+      tags: [auth]
+      summary: Sign in
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginInput"
+      responses:
+        "200":
+          description: Signed in
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "401":
+          $ref: "#/components/responses/Error"
+  /auth/me:
+    get:
+      operationId: getCurrentUser
+      tags: [auth]
+      summary: Get the signed-in user
+      responses:
+        "200":
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "401":
+          $ref: "#/components/responses/Error"
+  /auth/logout:
+    post:
+      operationId: logout
+      tags: [auth]
+      summary: Sign out
+      responses:
+        "200":
+          description: Signed out
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResponse"
+  /categories:
+    get:
+      operationId: listCategories
+      tags: [marketplace]
+      summary: List service categories
+      responses:
+        "200":
+          description: Service categories
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Category"
+  /professionals:
+    get:
+      operationId: listProfessionals
+      tags: [marketplace]
+      summary: Search local professionals
+      parameters:
+        - in: query
+          name: categoryId
+          schema: { type: string }
+        - in: query
+          name: query
+          schema: { type: string }
+        - in: query
+          name: latitude
+          schema: { type: number }
+        - in: query
+          name: longitude
+          schema: { type: number }
+        - in: query
+          name: maxDistance
+          schema: { type: number }
+        - in: query
+          name: minRating
+          schema: { type: number }
+        - in: query
+          name: sort
+          schema:
+            type: string
+            enum: [distance, rating, price, availability]
+      responses:
+        "200":
+          description: Nearby professionals
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Professional"
+  /professionals/{id}:
+    get:
+      operationId: getProfessional
+      tags: [marketplace]
+      summary: Get a professional profile and reviews
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: Professional details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProfessionalDetail"
+        "404":
+          $ref: "#/components/responses/Error"
+  /dashboard:
+    get:
+      operationId: getDashboard
+      tags: [marketplace]
+      summary: Get role-specific dashboard data
+      responses:
+        "200":
+          description: Dashboard summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Dashboard"
+  /bookings:
+    get:
+      operationId: listBookings
+      tags: [bookings]
+      summary: List bookings visible to the signed-in user
+      responses:
+        "200":
+          description: Bookings
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Booking"
+    post:
+      operationId: createBooking
+      tags: [bookings]
+      summary: Create a service request
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BookingInput"
+      responses:
+        "201":
+          description: Booking created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Booking"
+        "400":
+          $ref: "#/components/responses/Error"
+  /bookings/{id}:
+    get:
+      operationId: getBooking
+      tags: [bookings]
+      summary: Get booking details and status history
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: Booking details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BookingDetail"
+        "404":
+          $ref: "#/components/responses/Error"
+  /bookings/{id}/status:
+    patch:
+      operationId: updateBookingStatus
+      tags: [bookings]
+      summary: Update a booking status
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BookingStatusInput"
+      responses:
+        "200":
+          description: Updated booking
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Booking"
+        "400":
+          $ref: "#/components/responses/Error"
+  /bookings/{id}/review:
+    post:
+      operationId: createReview
+      tags: [bookings]
+      summary: Rate a completed service
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReviewInput"
+      responses:
+        "201":
+          description: Review created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Review"
+        "400":
+          $ref: "#/components/responses/Error"
+  /notifications:
+    get:
+      operationId: listNotifications
+      tags: [notifications]
+      summary: List notifications for the signed-in user
+      responses:
+        "200":
+          description: Notifications
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Notification"
+  /notifications/{id}/read:
+    patch:
+      operationId: markNotificationRead
+      tags: [notifications]
+      summary: Mark one notification as read
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: Updated notification
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Notification"
+  /notifications/read-all:
+    post:
+      operationId: markAllNotificationsRead
+      tags: [notifications]
+      summary: Mark all notifications as read
+      responses:
+        "200":
+          description: Updated notification count
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CountResponse"
+  /notifications/stream:
+    get:
+      operationId: streamNotifications
+      tags: [notifications]
+      summary: Subscribe to live notifications over server-sent events
+      responses:
+        "200":
+          description: Server-sent notification events
+          content:
+            text/event-stream:
+              schema:
+                type: string
+  /professional/profile:
+    get:
+      operationId: getOwnProfessionalProfile
+      tags: [professional]
+      summary: Get the signed-in professional profile
+      responses:
+        "200":
+          description: Professional profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Professional"
+    put:
+      operationId: saveProfessionalProfile
+      tags: [professional]
+      summary: Create or update professional profile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProfessionalInput"
+      responses:
+        "200":
+          description: Saved profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Professional"
+  /professional/availability:
+    patch:
+      operationId: updateAvailability
+      tags: [professional]
+      summary: Set professional online availability
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AvailabilityInput"
+      responses:
+        "200":
+          description: Availability updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Professional"
+  /admin/summary:
+    get:
+      operationId: getAdminSummary
+      tags: [admin]
+      summary: Get marketplace totals and category booking counts
+      responses:
+        "200":
+          description: Admin summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminSummary"
+  /admin/users:
+    get:
+      operationId: listAdminUsers
+      tags: [admin]
+      summary: List user accounts for account management
+      responses:
+        "200":
+          description: User accounts
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/User"
+  /admin/professionals:
+    get:
+      operationId: listAdminProfessionals
+      tags: [admin]
+      summary: List professionals awaiting verification
+      responses:
+        "200":
+          description: Professionals
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Professional"
+  /admin/professionals/{id}/verification:
+    patch:
+      operationId: updateVerification
+      tags: [admin]
+      summary: Approve or reject a professional
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VerificationInput"
+      responses:
+        "200":
+          description: Updated professional
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Professional"
+  /admin/bookings:
+    get:
+      operationId: listAdminBookings
+      tags: [admin]
+      summary: List all marketplace bookings
+      responses:
+        "200":
+          description: Bookings
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Booking"
+  /admin/users/{id}/status:
+    patch:
+      operationId: updateUserStatus
+      tags: [admin]
+      summary: Activate or deactivate an account
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserStatusInput"
+      responses:
+        "200":
+          description: Updated user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
 components:
+  parameters:
+    Id:
+      in: path
+      name: id
+      required: true
+      schema: { type: string }
+  responses:
+    Error:
+      description: Request error
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
   schemas:
     HealthStatus:
       type: object
       properties:
+        status: { type: string }
+      required: [status]
+    Error:
+      type: object
+      properties:
+        error: { type: string }
+      required: [error]
+    OkResponse:
+      type: object
+      properties:
+        ok: { type: boolean }
+      required: [ok]
+    CountResponse:
+      type: object
+      properties:
+        count: { type: integer }
+      required: [count]
+    SignupInput:
+      type: object
+      properties:
+        name: { type: string, minLength: 2 }
+        email: { type: string, format: email }
+        phone: { type: string }
+        password: { type: string, minLength: 8 }
+        role: { type: string, enum: [customer, professional] }
+      required: [name, email, phone, password, role]
+    LoginInput:
+      type: object
+      properties:
+        email: { type: string, format: email }
+        password: { type: string }
+        rememberMe: { type: boolean }
+      required: [email, password]
+    AuthResponse:
+      type: object
+      properties:
+        user: { $ref: "#/components/schemas/User" }
+      required: [user]
+    User:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        email: { type: string }
+        phone: { type: string }
+        role: { type: string, enum: [customer, professional, admin] }
+        active: { type: boolean }
+        photoUrl: { type: ["string", "null"] }
+      required: [id, name, email, phone, role, active, photoUrl]
+    Category:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        icon: { type: string }
+        description: { type: string }
+      required: [id, name, icon, description]
+    Professional:
+      type: object
+      properties:
+        id: { type: string }
+        userId: { type: string }
+        name: { type: string }
+        email: { type: string }
+        phone: { type: string }
+        categories:
+          type: array
+          items: { type: string }
+        skills:
+          type: array
+          items: { type: string }
+        experienceYears: { type: integer }
+        price: { type: integer }
+        priceType: { type: string, enum: [visit, hour] }
+        serviceRadius: { type: number }
+        bio: { type: string }
+        photoUrl: { type: ["string", "null"] }
+        available: { type: boolean }
+        verification: { type: string, enum: [pending, verified, rejected] }
+        rating: { type: number }
+        reviewsCount: { type: integer }
+        completedJobs: { type: integer }
+        latitude: { type: number }
+        longitude: { type: number }
+        area: { type: string }
+        distance: { type: ["number", "null"] }
+      required: [id, userId, name, email, phone, categories, skills, experienceYears, price, priceType, serviceRadius, bio, photoUrl, available, verification, rating, reviewsCount, completedJobs, latitude, longitude, area, distance]
+    ProfessionalDetail:
+      allOf:
+        - $ref: "#/components/schemas/Professional"
+        - type: object
+          properties:
+            reviews:
+              type: array
+              items: { $ref: "#/components/schemas/Review" }
+          required: [reviews]
+    ProfessionalInput:
+      type: object
+      properties:
+        categories: { type: array, items: { type: string }, minItems: 1 }
+        skills: { type: array, items: { type: string } }
+        experienceYears: { type: integer, minimum: 0 }
+        price: { type: integer, minimum: 1 }
+        priceType: { type: string, enum: [visit, hour] }
+        serviceRadius: { type: number, minimum: 1 }
+        bio: { type: string }
+        photoUrl: { type: ["string", "null"] }
+        latitude: { type: number }
+        longitude: { type: number }
+        area: { type: string }
+      required: [categories, skills, experienceYears, price, priceType, serviceRadius, bio, latitude, longitude, area]
+    AvailabilityInput:
+      type: object
+      properties:
+        available: { type: boolean }
+      required: [available]
+    BookingInput:
+      type: object
+      properties:
+        professionalId: { type: string }
+        categoryId: { type: string }
+        title: { type: string, minLength: 3 }
+        description: { type: string, minLength: 10 }
+        preferredAt: { type: string, format: date-time }
+        address: { type: string }
+        latitude: { type: number }
+        longitude: { type: number }
+        photos: { type: array, items: { type: string }, maxItems: 5 }
+      required: [professionalId, categoryId, title, description, preferredAt, address, latitude, longitude, photos]
+    BookingStatusInput:
+      type: object
+      properties:
         status:
           type: string
-      required:
-        - status
-
+          enum: [accepted, declined, on_the_way, in_progress, completed, cancelled]
+      required: [status]
+    Booking:
+      type: object
+      properties:
+        id: { type: string }
+        customerId: { type: string }
+        professionalId: { type: string }
+        customerName: { type: string }
+        professionalName: { type: string }
+        categoryId: { type: string }
+        categoryName: { type: string }
+        title: { type: string }
+        description: { type: string }
+        preferredAt: { type: string }
+        address: { type: string }
+        latitude: { type: number }
+        longitude: { type: number }
+        status: { type: string, enum: [requested, accepted, on_the_way, in_progress, completed, declined, cancelled] }
+        photos: { type: array, items: { type: string } }
+        price: { type: ["integer", "null"] }
+        createdAt: { type: string }
+      required: [id, customerId, professionalId, customerName, professionalName, categoryId, categoryName, title, description, preferredAt, address, latitude, longitude, status, photos, price, createdAt]
+    BookingDetail:
+      allOf:
+        - $ref: "#/components/schemas/Booking"
+        - type: object
+          properties:
+            statusHistory:
+              type: array
+              items: { $ref: "#/components/schemas/StatusEvent" }
+            review: { $ref: "#/components/schemas/Review" }
+          required: [statusHistory]
+    StatusEvent:
+      type: object
+      properties:
+        status: { type: string }
+        label: { type: string }
+        createdAt: { type: string }
+      required: [status, label, createdAt]
+    ReviewInput:
+      type: object
+      properties:
+        rating: { type: integer, minimum: 1, maximum: 5 }
+        comment: { type: string }
+      required: [rating, comment]
+    Review:
+      type: object
+      properties:
+        id: { type: string }
+        bookingId: { type: string }
+        customerName: { type: string }
+        rating: { type: integer }
+        comment: { type: string }
+        createdAt: { type: string }
+      required: [id, bookingId, customerName, rating, comment, createdAt]
+    Notification:
+      type: object
+      properties:
+        id: { type: string }
+        type: { type: string }
+        title: { type: string }
+        message: { type: string }
+        bookingId: { type: ["string", "null"] }
+        read: { type: boolean }
+        createdAt: { type: string }
+      required: [id, type, title, message, bookingId, read, createdAt]
+    Dashboard:
+      type: object
+      properties:
+        user: { $ref: "#/components/schemas/User" }
+        bookings: { type: array, items: { $ref: "#/components/schemas/Booking" } }
+        incomingBookings: { type: array, items: { $ref: "#/components/schemas/Booking" } }
+        unreadNotifications: { type: integer }
+        totalEarnings: { type: integer }
+        completedJobs: { type: integer }
+        averageRating: { type: number }
+      required: [user, bookings, incomingBookings, unreadNotifications, totalEarnings, completedJobs, averageRating]
+    AdminSummary:
+      type: object
+      properties:
+        users: { type: integer }
+        professionals: { type: integer }
+        bookings: { type: integer }
+        pendingVerification: { type: integer }
+        categories:
+          type: array
+          items:
+            type: object
+            properties:
+              name: { type: string }
+              count: { type: integer }
+            required: [name, count]
+      required: [users, professionals, bookings, pendingVerification, categories]
+    VerificationInput:
+      type: object
+      properties:
+        verification: { type: string, enum: [verified, rejected] }
+      required: [verification]
+    UserStatusInput:
+      type: object
+      properties:
+        active: { type: boolean }
+      required: [active]

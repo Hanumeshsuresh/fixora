@@ -1,10 +1,11 @@
-# [Project name]
+# Fixora
 
-_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
+Fixora is a Coimbatore services marketplace for discovering, booking, and tracking trusted nearby professionals.
 
 ## Run & Operate
 
 - `pnpm --filter @workspace/api-server run dev` — run the API server (port 5000)
+- `pnpm --filter @workspace/fixora run dev` — run the Fixora web app
 - `pnpm run typecheck` — full typecheck across all packages
 - `pnpm run build` — typecheck + build all packages
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
@@ -22,23 +23,31 @@ _Replace the heading above with the project's name, and this line with one sente
 
 ## Where things live
 
-_Populate as you build — short repo map plus pointers to the source-of-truth file for DB schema, API contracts, theme files, etc._
+- `artifacts/fixora` — React + Vite marketplace UI
+- `artifacts/api-server` — Express REST API, sessions, notifications, and local demo uploads
+- `lib/api-spec/openapi.yaml` — API contract and source for generated hooks/schemas
+- `lib/db/src/schema/fixora.ts` — Fixora PostgreSQL schema
+- `README.md` — short product overview and demo sign-ins
 
 ## Architecture decisions
 
-_Populate as you build — non-obvious choices a reader couldn't infer from the code (3-5 bullets)._
+- Auth uses an opaque random session token in an HttpOnly cookie; only its SHA-256 hash is stored in PostgreSQL.
+- Booking photos are stored under the API server's local `uploads/` directory for the college demo, with paths and metadata in PostgreSQL.
+- Nearby sorting uses the Haversine distance formula and Coimbatore-area seed coordinates.
+- Notification delivery uses SSE with client-side polling as a recovery path.
 
 ## Product
 
-_Describe the high-level user-facing capabilities of this app once they exist._
+Customers can search nearby service providers, send requests with problem photos, track status changes, and review completed jobs. Professionals manage service profiles, availability, and incoming requests. Admins view marketplace metrics and manage verification and account status.
 
 ## User preferences
 
-_Populate as you build — explicit user instructions worth remembering across sessions._
+- Keep the app responsive and accessible, with a deep-blue base and orange accents.
 
 ## Gotchas
 
-_Populate as you build — sharp edges, "always run X before Y" rules._
+- Demo seed data is inserted on the API's first start when the categories table is empty.
+- The browser and API are same-origin through the artifact proxy; keep app calls relative to `/api`.
 
 ## Pointers
 

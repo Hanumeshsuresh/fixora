@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "Fixora"
+description = "A location-based marketplace where customers in Coimbatore find and book trusted nearby service professionals, track jobs, and receive updates."
+version = "1.0.0"
+id = "artifacts/fixora"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 18202
+
+[services.development]
+run = "pnpm --filter @workspace/fixora run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/fixora", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/fixora/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "18202"
+BASE_PATH = "/"

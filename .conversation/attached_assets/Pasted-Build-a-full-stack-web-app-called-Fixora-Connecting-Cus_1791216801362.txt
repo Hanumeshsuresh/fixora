@@ -1,0 +1,58 @@
+Build a full-stack web app called "Fixora - Connecting Customers with Trusted Nearby Professionals". It is a location-based marketplace where customers find and book local service professionals (electricians, plumbers, carpenters, mechanics, AC technicians). It is inspired by Instawork. It's a college mini project demo, so it must look professional and run reliably.
+
+TECH STACK
+- Frontend: React + Vite + Tailwind CSS, React Router, lucide-react icons
+- Backend: Node.js + Express, REST API
+- Database: PostgreSQL (use Replit's built-in database) with Drizzle ORM or Prisma
+- Auth: email + password, bcrypt-hashed passwords, JWT or session cookies
+- Maps: Leaflet + OpenStreetMap (no API key needed)
+- Image upload: multer, saved to an /uploads folder served statically
+- Real-time notifications: Server-Sent Events or WebSocket, with a polling fallback
+- Everything must work with no paid API keys.
+
+USER ROLES
+1. Customer
+2. Professional
+3. Admin (one seeded account)
+
+AUTH PAGES
+- Landing page: hero section, how it works (3 steps), service categories, top-rated professionals, footer
+- Signup page: choose role (Customer or Professional), name, email, phone, password, confirm password, validation errors
+- Login page: email + password, show/hide password, "remember me"
+- Protected routes by role, logout, and a basic profile page
+
+CUSTOMER FEATURES
+- Dashboard with active bookings, past bookings, notifications, and a quick search
+- "Find a Professional": choose a service category, use browser geolocation (with a manual address/city fallback), and see nearby professionals as cards AND as map pins. Sort by distance (Haversine), rating, price, and availability. Filter by category, rating, and max distance.
+- Professional profile page: photo, skills, experience, hourly/visit price, availability, rating, reviews, verified badge
+- Create a Booking / Job Request form: service category, problem title, detailed description, preferred date and time, address (with map pin), and UPLOAD UP TO 5 PHOTOS of the problem with preview thumbnails. The professional sees these so they know which tools and parts to bring.
+- Booking tracking with statuses: Requested -> Accepted -> On the way -> In progress -> Completed (or Declined/Cancelled), shown as a timeline
+- After completion: leave a 1-5 star rating and a review
+
+PROFESSIONAL FEATURES
+- Profile setup: categories, skills, years of experience, price, service radius, bio, profile photo, and an availability toggle (Online/Offline)
+- Dashboard: incoming job requests (with problem photos, description, distance, and customer location on a map), accept/decline buttons, and status update buttons, plus earnings summary, completed jobs count, and average rating
+- Verification status badge (Pending / Verified)
+
+NOTIFICATION SYSTEM
+- Notification bell in the navbar with an unread count badge and a dropdown of the latest notifications
+- A full Notifications dashboard page: list, filter by All/Unread, mark as read, mark all as read
+- Real-time toast popups when something happens. Trigger notifications on: new booking request (to professional), booking accepted/declined/on the way/completed (to customer), new review (to professional), and verification approved (to professional).
+
+ADMIN FEATURES
+- Admin dashboard: total users, professionals, bookings, and a simple chart of bookings by category
+- Verify/reject professionals, view all bookings, and deactivate users
+
+DATABASE TABLES
+users, professional_profiles, categories, bookings, booking_photos, reviews, notifications
+
+SEED DATA
+Create realistic demo data around Coimbatore, Tamil Nadu, India: 5 categories and 15 professionals with Indian names, ratings, prices in INR, and coordinates spread across Coimbatore areas (RS Puram, Gandhipuram, Peelamedu, Saibaba Colony, Singanallur). Also create 3 demo customers, 1 admin, and a few sample bookings and reviews. Show demo login credentials on the login page for easy testing.
+
+UI REQUIREMENTS
+- Clean, modern, fully responsive (mobile + desktop)
+- Primary color deep blue with an orange accent, rounded cards, soft shadows, and good spacing
+- Loading skeletons, empty states, and friendly error messages
+- Navbar changes based on login state and role
+
+Build the complete working app, run it, fix any errors, and make sure the signup -> login -> search -> book with photos -> professional accepts -> customer gets a notification flow works end to end. Give me a short README with the demo credentials.
