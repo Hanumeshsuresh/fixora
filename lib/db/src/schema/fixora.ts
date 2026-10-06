@@ -69,13 +69,15 @@ export const bookingsTable = pgTable("fixora_bookings", {
   status: text("status").notNull().default("requested"),
   photos: text("photos").array().notNull().default([]),
   price: integer("price"),
+  toolsNote: text("tools_note"),           // professional's "tools I'll bring" note
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
 export const bookingPhotosTable = pgTable("fixora_booking_photos", {
   id: text("id").primaryKey(),
   bookingId: text("booking_id").notNull(),
-  photoUrl: text("photo_url").notNull(),
+  photoUrl: text("photo_url").notNull(),   // kept for compatibility
+  photoData: text("photo_data"),           // base64 data URL — survives free hosting
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

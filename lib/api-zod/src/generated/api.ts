@@ -262,6 +262,7 @@ export const ListBookingsResponseItem = zod.object({
   "status": zod.enum(['requested', 'accepted', 'on_the_way', 'in_progress', 'completed', 'declined', 'cancelled']),
   "photos": zod.array(zod.string()),
   "price": zod.number().int().nullable(),
+  "toolsNote": zod.string().nullable().optional(),
   "createdAt": zod.string()
 })
 export const ListBookingsResponse = zod.array(ListBookingsResponseItem)
@@ -335,6 +336,7 @@ export const GetBookingResponse = zod.object({
   "status": zod.enum(['requested', 'accepted', 'on_the_way', 'in_progress', 'completed', 'declined', 'cancelled']),
   "photos": zod.array(zod.string()),
   "price": zod.number().int().nullable(),
+  "toolsNote": zod.string().nullable().optional(),
   "createdAt": zod.string()
 }).and(zod.object({
   "statusHistory": zod.array(zod.object({

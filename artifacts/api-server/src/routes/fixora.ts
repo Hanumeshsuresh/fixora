@@ -1,5 +1,4 @@
 import { createHash, randomBytes, randomUUID } from "node:crypto";
-import { mkdirSync } from "node:fs";
 import path from "node:path";
 import bcrypt from "bcryptjs";
 import multer from "multer";
@@ -66,18 +65,11 @@ import {
 import { publishNotification, subscribeToNotifications } from "../lib/fixora-events";
 
 const router: IRouter = Router();
-const uploadDir = path.resolve(process.cwd(), "uploads");
-mkdirSync(uploadDir, { recursive: true });
+
 const allowedImageTypes = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
 const upload = multer({
-  storage: multer.diskStorage({
-    destination: uploadDir,
-    filename: (_req, file, callback) => {
-      const extension = path.extname(file.originalname).toLowerCase().replace(/[^.a-z0-9]/g, "");
-      callback(null, `${randomUUID()}${extension}`);
-    },
-  }),
-  limits: { fileSize: 8 * 1024 * 1024, files: 5 },
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024, files: 5 },
   fileFilter: (_req, file, callback) => {
     if (!allowedImageTypes.has(file.mimetype)) {
       callback(new Error("Only JPG, PNG, WebP, and GIF images are supported."));
@@ -242,6 +234,7 @@ async function bookingResponse(booking: BookingRecord) {
     status: booking.status as "requested" | "accepted" | "on_the_way" | "in_progress" | "completed" | "declined" | "cancelled",
     photos: photoRows.length ? photoRows.map((photo) => photo.photoUrl) : booking.photos ?? [],
     price: booking.price,
+    toolsNote: booking.toolsNote ?? null,
     createdAt: booking.createdAt.toISOString(),
   };
 }
@@ -490,11 +483,24 @@ router.post("/bookings", async (req, res): Promise<void> => {
     price: profilePair.profile.price,
   }).returning();
   if (parsed.data.photos.length) {
-    await db.insert(bookingPhotosTable).values(parsed.data.photos.slice(0, 5).map((photoUrl) => ({
-      id: randomUUID(),
-      bookingId: booking.id,
-      photoUrl,
-    })));
+    // Update pre-inserted "pending" photo rows from the upload endpoint
+    for (const photoUrl of parsed.data.photos.slice(0, 5)) {
+      // Extract photo ID from /api/photos/:id URL
+      const photoId = photoUrl.split("/").pop();
+      if (photoId) {
+        // Try to update a pre-inserted pending record
+        const updated = await db.update(bookingPhotosTable)
+          .set({ bookingId: booking.id })
+          .where(and(eq(bookingPhotosTable.id, photoId), eq(bookingPhotosTable.bookingId, "pending")))
+          .returning();
+        // Fallback: if not a pre-inserted record (e.g. old disk URL), insert new row
+        if (!updated.length) {
+          await db.insert(bookingPhotosTable).values({ id: randomUUID(), bookingId: booking.id, photoUrl });
+        }
+      } else {
+        await db.insert(bookingPhotosTable).values({ id: randomUUID(), bookingId: booking.id, photoUrl });
+      }
+    }
   }
   await db.insert(bookingStatusEventsTable).values({
     id: randomUUID(),
@@ -665,7 +671,7 @@ router.post("/bookings/:id/review", async (req, res): Promise<void> => {
 router.post("/uploads", async (req, res): Promise<void> => {
   const user = await requireUser(req, res);
   if (!user) return;
-  upload.array("photos", 5)(req, res, (error: unknown) => {
+  upload.array("photos", 5)(req, res, async (error: unknown) => {
     if (error) {
       const message = error instanceof Error ? error.message : "Unable to upload these images.";
       res.status(400).json({ error: message });
@@ -676,10 +682,58 @@ router.post("/uploads", async (req, res): Promise<void> => {
       res.status(400).json({ error: "Choose at least one photo." });
       return;
     }
-    res.status(201).json({
-      photos: files.map((file) => `/api/uploads/${encodeURIComponent(file.filename)}`),
-    });
+    // Convert to base64 data URLs and store in DB (survives free hosting — no disk needed)
+    const inserted: string[] = [];
+    for (const file of files) {
+      const b64 = file.buffer.toString("base64");
+      const dataUrl = `data:${file.mimetype};base64,${b64}`;
+      const photoId = randomUUID();
+      await db.insert(bookingPhotosTable).values({
+        id: photoId,
+        bookingId: "pending",   // associated when booking is created
+        photoUrl: `/api/photos/${photoId}`,
+        photoData: dataUrl,
+      });
+      inserted.push(`/api/photos/${photoId}`);
+    }
+    res.status(201).json({ photos: inserted });
   });
+});
+
+// Serve photos from DB (no disk required)
+router.get("/photos/:id", async (req, res): Promise<void> => {
+  const [photo] = await db.select().from(bookingPhotosTable)
+    .where(eq(bookingPhotosTable.id, req.params.id)).limit(1);
+  if (!photo?.photoData) {
+    res.status(404).json({ error: "Photo not found." });
+    return;
+  }
+  // Parse data URL: data:image/jpeg;base64,XXXX
+  const match = photo.photoData.match(/^data:([^;]+);base64,(.+)$/s);
+  if (!match) {
+    res.status(500).json({ error: "Photo data is corrupted." });
+    return;
+  }
+  const buffer = Buffer.from(match[2], "base64");
+  res.setHeader("Content-Type", match[1]);
+  res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+  res.send(buffer);
+});
+
+// Professional adds a "tools and materials I'll bring" note visible to customer
+router.put("/bookings/:id/tools-note", async (req, res): Promise<void> => {
+  const user = await requireUser(req, res, ["professional"]);
+  if (!user) return;
+  const { id } = req.params;
+  const { toolsNote } = req.body as { toolsNote?: string };
+  const [booking] = await db.select().from(bookingsTable).where(eq(bookingsTable.id, id)).limit(1);
+  if (!booking || booking.professionalId !== user.id) {
+    res.status(404).json({ error: "Booking not found." });
+    return;
+  }
+  await db.update(bookingsTable).set({ toolsNote: toolsNote?.trim() || null }).where(eq(bookingsTable.id, id));
+  await notifyUser(booking.customerId, "tools_note", "Professional shared a note", `${user.name} shared what they'll bring for "${booking.title}".`, booking.id);
+  res.json({ ok: true, toolsNote: toolsNote?.trim() || null });
 });
 
 router.get("/notifications", async (req, res): Promise<void> => {

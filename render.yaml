@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: fixora
+    env: node
+    buildCommand: pnpm run build:prod
+    startCommand: cd artifacts/api-server && node --env-file=../../.env dist/index.mjs
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 5000
+      - key: DATABASE_URL
+        sync: false
+      - key: FRONTEND_URL
+        sync: false
